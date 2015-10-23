@@ -313,11 +313,20 @@ os_sync_free(void)
 	os_event_t	event;
 	os_ib_mutex_t	mutex;
 
+	ib_logf(IB_LOG_LEVEL_INFO, "::os_sync_free() thread %lu tid %lu",
+		os_thread_get_curr_id(), os_thread_pf(os_thread_get_curr_id()));
+
+	if (os_sync_free_called) {
+		ib_logf(IB_LOG_LEVEL_INFO, ":::os_sync_free_called ! ");
+		return;
+	}
+
 	os_sync_free_called = TRUE;
 	event = UT_LIST_GET_FIRST(os_event_list);
 
 	while (event) {
 
+		ib_logf(IB_LOG_LEVEL_INFO, "...Freeing event %p", event);
 		os_event_free(event);
 
 		event = UT_LIST_GET_FIRST(os_event_list);
@@ -333,11 +342,16 @@ os_sync_free(void)
 			os_sync_mutex_inited = FALSE;
 		}
 
+		ib_logf(IB_LOG_LEVEL_INFO, "...Freeing mutex %p", mutex);
 		os_mutex_free(mutex);
 
 		mutex = UT_LIST_GET_FIRST(os_mutex_list);
 	}
+
 	os_sync_free_called = FALSE;
+
+	ib_logf(IB_LOG_LEVEL_INFO, "::os_sync_free() exit  thread %lu tid %lu",
+		os_thread_get_curr_id(), os_thread_pf(os_thread_get_curr_id()));
 }
 
 /*********************************************************//**
