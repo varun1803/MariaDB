@@ -56,6 +56,11 @@ PermissionsStartOnly=true
 ExecStart=/usr/sbin/mysqld $MYSQLD_OPTS
 @SYSTEMD_EXECSTARTPOST@
 
+#
+# Rather ugly workaround for
+# MDEV-8956 - systemd loses MariaDB service if it restarts too quickly
+ExecStopPost=/bin/sleep 3
+
 KillMode=process
 KillSignal=SIGTERM
 
