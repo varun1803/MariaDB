@@ -3837,14 +3837,12 @@ mariadb_dyncol_val_str(DYNAMIC_STRING *str, DYNAMIC_COLUMN_VALUE *val,
         return ER_DYNCOL_RESOURCE;
       break;
     case DYN_COL_DOUBLE:
-      len= my_snprintf(buff, sizeof(buff), "%g", val->x.double_value);
+
+      len= my_gcvt(val->x.double_value, MY_GCVT_ARG_DOUBLE,
+                   sizeof(buff) - 1, buff, NULL);
       if (dynstr_realloc(str, len + (quote ? 2 : 0)))
         return ER_DYNCOL_RESOURCE;
-      if (quote)
-        str->str[str->length++]= quote;
       dynstr_append_mem(str, buff, len);
-      if (quote)
-        str->str[str->length++]= quote;
       break;
     case DYN_COL_DYNCOL:
     case DYN_COL_STRING:
