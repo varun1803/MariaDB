@@ -768,9 +768,9 @@ trx_lists_init_at_db_start(void)
 								" anyway.\n");
 
 							trx->state = TRX_ACTIVE;
-							trx_reserve_descriptor(
-								trx);
 						}
+
+						trx_reserve_descriptor(trx);
 					} else {
 						trx->state
 							= TRX_COMMITTED_IN_MEMORY;
@@ -879,6 +879,12 @@ trx_start_low(
 	read_view_open_now: */
 
 	trx->no = IB_ULONGLONG_MAX;
+
+	/* Cache the state of fake_changes that transaction will use for
+	lifetime. Any change in session/global fake_changes configuration during
+	lifetime of transaction will not be honored by already started
+	transaction. */
+	trx->fake_changes = thd_fake_changes(trx->mysql_thd);
 
 	trx->rseg = rseg;
 

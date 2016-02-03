@@ -1,6 +1,6 @@
 /***********************************************************************
 
-Copyright (c) 1995, 2010, Innobase Oy. All Rights Reserved.
+Copyright (c) 1995, 2015, Oracle and/or its affiliates. All Rights Reserved.
 Copyright (c) 2009, Percona Inc.
 
 Portions of this file contain modifications contributed and copyrighted
@@ -1319,9 +1319,10 @@ os_file_create_simple_no_error_handling_func(
 				OS_FILE_CREATE if a new file is created
 				(if exists, error) */
 	ulint		access_type,/*!< in: OS_FILE_READ_ONLY,
-				OS_FILE_READ_WRITE, or
-				OS_FILE_READ_ALLOW_DELETE; the last option is
-				used by a backup program reading the file */
+				OS_FILE_READ_WRITE, OS_FILE_READ_ALLOW_DELETE
+				(used by a backup program reading the file), or
+				OS_FILE_READ_WRITE_CACHED (disable O_DIRECT if
+				it would be enabled otherwise). */
 	ibool*		success)/*!< out: TRUE if succeed, FALSE if error */
 {
 #ifdef __WIN__
@@ -1344,7 +1345,8 @@ os_file_create_simple_no_error_handling_func(
 
 	if (access_type == OS_FILE_READ_ONLY) {
 		access = GENERIC_READ;
-	} else if (access_type == OS_FILE_READ_WRITE) {
+	} else if (access_type == OS_FILE_READ_WRITE
+		   || access_type == OS_FILE_READ_WRITE_CACHED) {
 		access = GENERIC_READ | GENERIC_WRITE;
 	} else if (access_type == OS_FILE_READ_ALLOW_DELETE) {
 		access = GENERIC_READ;
@@ -1376,16 +1378,19 @@ os_file_create_simple_no_error_handling_func(
 #else /* __WIN__ */
 	os_file_t	file;
 	int		create_flag;
+	const char*	mode_str	= NULL;
 
 	ut_a(name);
 
 	if (create_mode == OS_FILE_OPEN) {
+		mode_str = "OPEN";
 		if (access_type == OS_FILE_READ_ONLY) {
 			create_flag = O_RDONLY;
 		} else {
 			create_flag = O_RDWR;
 		}
 	} else if (create_mode == OS_FILE_CREATE) {
+		mode_str = "CREATE";
 		create_flag = O_RDWR | O_CREAT | O_EXCL;
 	} else {
 		create_flag = 0;
@@ -1402,7 +1407,8 @@ os_file_create_simple_no_error_handling_func(
 	if (file == -1) {
 		*success = FALSE;
 #ifdef USE_FILE_LOCK
-	} else if (access_type == OS_FILE_READ_WRITE
+	} else if ((access_type == OS_FILE_READ_WRITE
+		    || access_type == OS_FILE_READ_WRITE_CACHED)
 		   && os_file_lock(file, name)) {
 		*success = FALSE;
 		close(file);
@@ -1410,6 +1416,16 @@ os_file_create_simple_no_error_handling_func(
 #endif
 	} else {
 		*success = TRUE;
+
+		/* This function is always called for data files, we should
+		disable OS caching (O_DIRECT) here as we do in
+		os_file_create_func(), so we open the same file in the same
+		mode, see man page of open(2). */
+		if ((srv_unix_file_flush_method == SRV_UNIX_O_DIRECT
+		    || srv_unix_file_flush_method == SRV_UNIX_ALL_O_DIRECT)
+		    && access_type != OS_FILE_READ_WRITE_CACHED) {
+			os_file_set_nocache(file, name, mode_str);
+		}
 	}
 
 	return(file);

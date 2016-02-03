@@ -1140,7 +1140,7 @@ dict_create_index_step(
 			>= DICT_TF_FORMAT_ZIP);
 
 		node->index = dict_index_get_if_in_cache_low(index_id);
-		ut_a(!node->index == (err != DB_SUCCESS));
+		ut_a(err == DB_SUCCESS ? node->index != NULL : node->index == NULL);
 
 		if (err != DB_SUCCESS) {
 
@@ -1505,6 +1505,19 @@ dict_foreign_def_get_fields(
 }
 
 /********************************************************************//**
+	fieldbuf[bufend - fieldbuf] = '\0';
+
+	bufend = innobase_convert_name(fieldbuf2, MAX_TABLE_NAME_LEN,
+			foreign->referenced_col_names[col_no],
+			strlen(foreign->referenced_col_names[col_no]),
+			trx->mysql_thd, FALSE);
+
+	fieldbuf2[bufend - fieldbuf2] = '\0';
+	*field = fieldbuf;
+	*field2 = fieldbuf2;
+}
+
+/********************************************************************//**
 Add a single foreign key definition to the data dictionary tables in the
 database. We also generate names to constraints that were not named by the
 user. A generated constraint has a name of the format
@@ -1602,6 +1615,13 @@ dict_create_add_foreign_to_dictionary(
 				buf, fk_def);
 		}
 
+				" failed. Foreign key constraint %s"
+				" already exists on data dictionary."
+				" Foreign key constraint names need to be unique in database."
+				" Error in foreign key definition: %s.",
+				tablename, buf, fk_def);
+		}
+
 		return(error);
 	}
 
@@ -1624,6 +1644,12 @@ dict_create_add_foreign_to_dictionary(
 				(const char *)"InnoDB: Error adding foreign  key constraint name %s fields %s or %s to the dictionary."
 				" Error in foreign key definition: %s.",
 				buf, i+1, fk_def);
+			ib_push_warning(trx, error,
+				"Create or Alter table %s with foreign key constraint"
+				" failed. Error adding foreign  key constraint name %s"
+				" fields %s or %s to the dictionary."
+				" Error in foreign key definition: %s.",
+				tablename, buf, i+1, fk_def);
 
 			return(error);
 		}

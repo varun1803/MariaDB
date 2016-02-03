@@ -2986,9 +2986,10 @@ mysql_prepare_create_table(THD *thd, HA_CREATE_INFO *create_info,
                                                sql_field->interval_list);
         List_iterator<String> int_it(sql_field->interval_list);
         String conv, *tmp;
-        char comma_buf[4]; /* 4 bytes for utf32 */
+        char comma_buf[5]; /* 5 bytes for 'filename' charset */
+        DBUG_ASSERT(sizeof(comma_buf) >= cs->mbmaxlen);
         int comma_length= cs->cset->wc_mb(cs, ',', (uchar*) comma_buf,
-                                          (uchar*) comma_buf + 
+                                          (uchar*) comma_buf +
                                           sizeof(comma_buf));
         DBUG_ASSERT(comma_length > 0);
         for (uint i= 0; (tmp= int_it++); i++)
@@ -4010,6 +4011,12 @@ static bool check_if_created_table_can_be_opened(THD *thd,
   result= (open_table_def(thd, &share, 0) ||
            open_table_from_share(thd, &share, "", 0, (uint) READ_ALL,
                                  0, &table, TRUE));
+  /*
+    Assert that the change list is empty as no partition function currently
+    needs to modify item tree. May need call THD::rollback_item_tree_changes
+    later before calling closefrm if the change list is not empty.
+  */
+  DBUG_ASSERT(thd->change_list.is_empty());
   if (! result)
     (void) closefrm(&table, 0);
 
