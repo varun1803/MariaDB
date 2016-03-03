@@ -15,8 +15,8 @@
 MACRO(SKIP_AWS_PLUGIN msg)
   IF(DEFINED VERBOSE)
     MESSAGE(STATUS "Skip aws_key_management - ${msg}")
-	RETURN()
   ENDIF()
+  RETURN()
 ENDMACRO()
 
 
