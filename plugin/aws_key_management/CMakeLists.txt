@@ -141,4 +141,4 @@ INCLUDE_DIRECTORIES(${CMAKE_BINARY_DIR}/aws_sdk_cpp/include)
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXX11_FLAGS}")
 MYSQL_ADD_PLUGIN(aws_key_management aws_key_management_plugin.cc
                  MODULE_ONLY COMPONENT aws-key-management
-                 LINK_LIBRARIES ${AWS_SDK_LIBS} DISABLED)
+                 LINK_LIBRARIES ${AWS_SDK_LIBS} )
