@@ -3893,7 +3893,7 @@ Field *Item::create_field_for_create_select(THD *thd, TABLE *table)
 {
   Field *def_field, *tmp_field;
   return create_tmp_field(thd, table, this, type(),
-                          (Item ***) 0, &tmp_field, &def_field, 0, 0, 0, 0, 0);
+                          (Item ***) 0, &tmp_field, &def_field, 0, 0, 0, 0);
 }
 
 
@@ -4253,6 +4253,8 @@ select_create::prepare(List<Item> &values, SELECT_LEX_UNIT *u)
     DBUG_RETURN(1);
   table->mark_columns_needed_for_insert();
   table->file->extra(HA_EXTRA_WRITE_CACHE);
+  // Mark table as used
+  table->query_id= thd->query_id;
   DBUG_RETURN(0);
 }
 

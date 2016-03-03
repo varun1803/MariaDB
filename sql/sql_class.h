@@ -1,6 +1,6 @@
 /*
    Copyright (c) 2000, 2015, Oracle and/or its affiliates.
-   Copyright (c) 2009, 2015, MariaDB
+   Copyright (c) 2009, 2016, MariaDB
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -3990,7 +3990,13 @@ public:
 #endif /*  GTID_SUPPORT */
   void                      *wsrep_apply_format;
   char                      wsrep_info[128]; /* string for dynamic proc info */
-  bool                      wsrep_skip_append_keys;
+  /*
+    When enabled, do not replicate/binlog updates from the current table that's
+    being processed. At the moment, it is used to keep mysql.gtid_slave_pos
+    table updates from being replicated to other nodes via galera replication.
+  */
+  bool                      wsrep_ignore_table;
+  wsrep_gtid_t              wsrep_sync_wait_gtid;
 #endif /* WITH_WSREP */
 
   /* Handling of timeouts for commands */
@@ -4460,10 +4466,14 @@ public:
 #define TMP_ENGINE_COLUMNDEF MARIA_COLUMNDEF
 #define TMP_ENGINE_HTON maria_hton
 #define TMP_ENGINE_NAME "Aria"
+inline uint tmp_table_max_key_length() { return maria_max_key_length(); }
+inline uint tmp_table_max_key_parts() { return maria_max_key_segments(); }
 #else
 #define TMP_ENGINE_COLUMNDEF MI_COLUMNDEF
 #define TMP_ENGINE_HTON myisam_hton
 #define TMP_ENGINE_NAME "MyISAM"
+inline uint tmp_table_max_key_length() { return MI_MAX_KEY_LENGTH; }
+inline uint tmp_table_max_key_parts() { return MI_MAX_KEY_SEG; }
 #endif
 
 /*
@@ -4519,8 +4529,6 @@ public:
   uint	group_parts,group_length,group_null_parts;
   uint	quick_group;
   bool  using_indirect_summary_function;
-  /* If >0 convert all blob fields to varchar(convert_blob_length) */
-  uint  convert_blob_length;
   CHARSET_INFO *table_charset;
   bool schema_table;
   /* TRUE if the temp table is created for subquery materialization. */
@@ -4549,7 +4557,7 @@ public:
 
   TMP_TABLE_PARAM()
     :copy_field(0), group_parts(0),
-     group_length(0), group_null_parts(0), convert_blob_length(0),
+     group_length(0), group_null_parts(0),
     schema_table(0), materialized_subquery(0), force_not_null_cols(0),
     precomputed_group_by(0),
     force_copy_fields(0), bit_fields_as_long(0), skip_create_table(0)
